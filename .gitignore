@@ -1,0 +1,5 @@
+*.sqlite
+*.html
+*.csv
+/.env
+__pycache__/
