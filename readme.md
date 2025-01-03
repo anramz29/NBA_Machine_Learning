@@ -148,6 +148,17 @@ This step applies Principal Component Analysis (PCA) and evaluates the model's p
 3. **XGBoost Classifier**
 4. **Voting Classifier**
 
+```python
+# Get probabilities from each model
+lr_proba = lr_pipeline.predict_proba(test[predictors])
+rf_proba = rf.predict_proba(test[predictors])
+xgb_proba = xgb.predict_proba(test[predictors])
+
+# Average the probabilities (soft voting)
+predictions_prob = (lr_proba + rf_proba + xgb_proba) / 3
+predictions = (predictions_prob[:, 1] >= 0.5).astype(int)
+```
+
 #### **Backtesting Framework**
 - Validates models across multiple NBA seasons.
 - Performs calibration using `CalibratedClassifierCV` for improved probability estimates.
@@ -169,7 +180,7 @@ This section adds a neural network to predict NBA game outcomes using TensorFlow
   - Layer 1: 512 neurons, `ReLU6` activation, dropout 20%.
   - Layer 2: 256 neurons, `ReLU6` activation, dropout 20%.
   - Layer 3: 128 neurons, `ReLU6` activation.
-- **Output Layer**: Softmax activation for categorical classification (home team win or loss).
+- **Output Layer**: **Softmax** activation obtained better results than **Sigmoid** for categorical classification (home team win or loss).
 
 **Key Steps**:
 1. Normalize the input data.
