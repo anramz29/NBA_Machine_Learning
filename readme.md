@@ -286,7 +286,7 @@ This section summarizes the evaluation metrics for models trained using the orig
 
 **Neural Network Progression**:
 
-<img src="images/NN_Progress.png" alt="Loss Progression Neural Network" width="700">
+<img src="images/NN_progress.png" alt="Loss Progression Neural Network" width="700">
 
 ---
 
