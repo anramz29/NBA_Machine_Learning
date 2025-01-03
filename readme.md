@@ -3,55 +3,146 @@
 ## Overview
 This project involves building predictive models and performing exploratory data analysis (EDA) on NBA data to evaluate team and player performance. The workflow integrates machine learning techniques, statistical modeling, and feature engineering, with a focus on Elo ratings, mutual information, and PCA for feature selection.
 
----
+## **Overview**
 
-## Key Components
+The pipeline achieves the following:
 
-### 1. Data Preprocessing and Parsing
-- **File Location**: `data/scores`
-- **Description**: Parses HTML box score files using `BeautifulSoup` and `pandas`.
-- **Features Extracted**:
-  - Line scores
-  - Basic and advanced statistics
-  - Team standings
-  - Game outcomes (win/loss)
-- **Output**: `team_stats.csv`
-
-#### Example Code:
-```python
-soup = parse_html(box_score)
-line_score = read_line_score(soup)
-standings = read_scores(soup)
-summary = read_stats(soup, team, "basic")
-```
+1. **Cross-validation with PCA**: Applies dimensionality reduction using PCA to retain 95% of variance and evaluates a Random Forest classifier.
+2. **Elo Rating Calculation**: Tracks team strength over time using a custom Elo system without data leakage.
+3. **Historical Statistics Calculation**: Computes win percentages and game counts for teams up to the current game.
 
 ---
 
-### 2. Feature Engineering
-#### **Elo Ratings**
-- Initializes and updates Elo ratings for teams.
-- Accounts for home advantage and seasonal reset with weighted initial Elo.
-- Adds Elo features (`Elo_Team`, `Elo_Team.1`) to the dataset.
+## **Code Structure**
 
-#### Example:
-```python
-elo = initialize_elo(teams, initial_elo=1500)
-data = add_elo_scores(df)
-```
 
-#### **Mutual Information**
-- Calculates mutual information scores to rank predictors based on their predictive power for the target variable.
-- Focuses on the top 20 features for modeling.
+### **1. Elo Rating Calculation**
+Tracks team Elo ratings chronologically without looking ahead, ensuring no data leakage.
 
-#### Example:
-```python
-mi = mutual_info_classif(X, y, random_state=42)
-mi_df = pd.DataFrame({'feature': predictors, 'mi': mi}).sort_values('mi', ascending=False)
-```
+- **Steps**:
+  1. Initialize all team ratings to a base value (e.g., 1500).
+  2. Adjust team ratings after each game based on the result and the expected score.
+  3. Carry over 75% of the previous season's Elo rating to the next season, if applicable.
+
+- **Key Parameters**:
+  - `initial_elo`: Starting Elo rating for new teams (default: 1500).
+  - `k`: Sensitivity factor for Elo updates (default: 20).
+  - `home_advantage`: Elo boost for the home team (default: 100).
+
+- **Key Outputs**:
+  - `Elo_Team`: Elo rating of the home team before the game.
+  - `Elo_Team.1`: Elo rating of the away team before the game.
+
+- **Code Snippet**:
+  ```python
+  def calculate_elo_chronologically(data, initial_elo=1500, k=20, home_advantage=100):
+      for idx, row in data.iterrows():
+          home_team = row['TEAM_NAME']
+          away_team = row['TEAM_NAME.1']
+          
+          home_elo = team_elos.get(home_team, initial_elo)
+          away_elo = team_elos.get(away_team, initial_elo)
+          
+          home_expected = 1 / (1 + 10 ** (-(home_elo - away_elo + home_advantage) / 400))
+          home_win = row['Target']
+          
+          team_elos[home_team] += k * (home_win - home_expected)
+          team_elos[away_team] += k * ((1 - home_win) - (1 - home_expected))
+  ```
 
 ---
 
-### 3. Machine Learning Models
+### **2. Historical Statistics Calculation**
+Calculates win percentages and game counts for each team up to the current game without data leakage.
+
+- **Steps**:
+  1. Track team statistics (wins, losses, and total games) for each season.
+  2. For each game, store the historical win percentage for both teams before updating their stats.
+
+- **Key Outputs**:
+  - `home_win_pct`: Home team's win percentage before the game.
+  - `away_win_pct`: Away team's win percentage before the game.
+  - `total_games`: Total games played by the home team before the game.
+
+- **Code Snippet**:
+  ```python
+  def calculate_historical_stats(data):
+      for idx, row in data.iterrows():
+          home_team = row['TEAM_NAME']
+          away_team = row['TEAM_NAME.1']
+          
+          home_stats = season_stats[season][home_team]
+          away_stats = season_stats[season][away_team]
+          
+          data.at[idx, 'home_win_pct'] = home_stats['wins'] / max(home_stats['games'], 1)
+          data.at[idx, 'away_win_pct'] = away_stats['wins'] / max(away_stats['games'], 1)
+          data.at[idx, 'total_games'] = home_stats['games']
+  ```
+
+---
+
+### **3. Full Data Processing**
+Combines all steps into a single function to process the dataset without data leakage.
+
+- **Steps**:
+  1. Sort the dataset chronologically by game date.
+  2. Apply Elo rating calculation.
+  3. Compute historical statistics.
+
+- **Key Outputs**:
+  - Processed dataset with Elo ratings and historical stats.
+
+- **Code Snippet**:
+  ```python
+  def process_data_without_leakage(data):
+      data = data.sort_values('Date').copy()
+      data = calculate_elo_chronologically(data)
+      data = calculate_historical_stats(data)
+      return data
+
+  data_processed = process_data_without_leakage(df)
+  ```
+
+
+
+
+### **4. Cross-validation with PCA**
+This step applies Principal Component Analysis (PCA) and evaluates the model's performance in a cross-validation framework.
+
+- **Steps**:
+  1. Split the data into training and validation sets using K-Fold cross-validation.
+  2. Apply PCA to retain 95% of variance.
+  3. Train a Random Forest classifier on the PCA-reduced data.
+  4. Evaluate validation accuracy and store PCA feature importance.
+
+- **Key Outputs**:
+  - Validation scores (`cv_scores`)
+  - Number of components for 95% variance (`cv_n_components`)
+  - Feature importance from PCA (`cv_feature_importance`)
+
+- **Code Snippet**:
+  ```python
+  for fold, (train_idx, val_idx) in tqdm(enumerate(kf.split(X_scaled)), total=n_splits, desc="Cross-validation"):
+      X_train = X_scaled[train_idx]
+      X_val = X_scaled[val_idx]
+      y_train = target.iloc[train_idx]
+      y_val = target.iloc[val_idx]
+      
+      pca = PCA(n_components=0.95)
+      X_train_pca = pca.fit_transform(X_train)
+      X_val_pca = pca.transform(X_val)
+      
+      clf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+      clf.fit(X_train_pca, y_train)
+      val_score = clf.score(X_val_pca, y_val)
+  ```
+
+<img src="images/PCA.png" alt="Scree Plot" width="900">
+
+
+---
+
+### 5. Machine Learning Models
 
 #### **Models Used**:
 1. **Logistic Regression**
@@ -71,24 +162,6 @@ def backtest(data, predictors, model, start=3, step=1):
         predictions, predictions_prob = get_predictions(model, test[predictors])
 ```
 
-#### **Elo-Based Predictions**
-- Elo ratings are directly used to predict game outcomes based on relative team strength.
-
----
-
-### 4. Dimensionality Reduction
-#### **Principal Component Analysis (PCA)**
-- Reduces the dimensionality of one-hot encoded team data.
-- Identifies the optimal number of components to retain 95% variance.
-
-#### Example:
-```python
-pca = PCA(n_components=225)
-pca.fit(transformed_train_df)
-num_components, cumulative_variance = find_optimal_components(pca.explained_variance_ratio_)
-```
-
----
 
 ### 5. Visualization and Evaluation
 
@@ -115,45 +188,49 @@ plot_confusion_matrix(test, predictions)
 - **F1 Score**
 - **AUC (Area Under Curve)**
 
-#### Example:
-```python
-accuracy = round(accuracy_score(test['Home-Team-Win'], predictions), 4)
-f1 = round(f1_score(test['Home-Team-Win'], predictions), 4)
-auc = round(roc_auc_score(test['Home-Team-Win'], predictions), 4)
-```
+#### Original Features
+##### Performance Metrics:
+
+- Higher accuracy (0.639) and AUC (0.619) suggest better ranking and classification ability when using original features.
+- The slightly lower F1 score (0.707) compared to PCA features indicates that the original features might struggle slightly more with balanced predictions in scenarios where false positives and false negatives carry significant weight.
+Calibration:
+
+- The calibration curve is smoother and closely aligned with the diagonal, indicating that predicted probabilities closely match actual probabilities.
+
+- This reflects the model's reliability when using the full feature set, potentially due to a richer representation of underlying relationships.
+
+##### Calibration Curve
+<img src="images/Original_Calibration_Curve.png" alt="Calibration Curve" width="700">
+
+
+#### PCA-Reduced Features
+##### Performance Metrics:
+
+- Accuracy (0.619): A slight decrease compared to the original features, likely because PCA removes some variance associated with predictive but less dominant features.
+- F1 Score (0.715): The increase suggests better handling of balanced prediction tasks, such as when classes are imbalanced or costs of misclassification differ.
+- AUC (0.584): A decrease indicates reduced ability to rank predictions by confidence, possibly due to the dimensionality reduction discarding some subtle but predictive relationships.
+Calibration:
+
+While slightly noisier, the curve still aligns reasonably well with the diagonal, indicating that PCA retains enough variance to make meaningful probabilistic predictions.
+However, the noisiness could reflect information loss or weaker correlations between reduced features and the target variable.
+
+##### Calibration Curve
+
+
+<img src="images/PCA_Calabration_Curve.png" alt="Calibration Curve" width="700">
+
+
+
+## Observations:
+
+Calibration Curves:
+
+The PCA features show a slightly noisier calibration but still align reasonably well with the diagonal.
+This suggests the model generalizes decently, even after dimensionality reduction.
+Metrics Context:
+
+AUC being low (0.584) suggests weaker ranking ability, but the F1 score is strong, meaning PCA features might work better for balanced prediction tasks rather than nuanced ranking.
 
 ---
 
-### 7. Notable Findings
-- Elo-based predictions achieved consistent accuracy across seasons.
-- Mutual information revealed key predictors like team standings and advanced stats.
-- PCA identified optimal feature sets, retaining 95% variance with reduced complexity.
-- Calibration curves show the model's predicted probabilities align well with actual probabilities, especially in higher probability ranges.
-- ROC curve analysis yielded an AUC of 0.69, indicating moderate model performance.
-- Accuracy, F1, and AUC metrics for each season demonstrate year-over-year stability:
-
-| Season | Accuracy | F1    | AUC   |
-|--------|----------|-------|-------|
-| 2016   | 0.6432   | 0.7170| 0.6168|
-| 2017   | 0.6551   | 0.7273| 0.6281|
-| 2018   | 0.6582   | 0.7233| 0.6364|
-| 2019   | 0.6597   | 0.7206| 0.6446|
-| 2020   | 0.6195   | 0.6933| 0.6027|
-| 2021   | 0.6435   | 0.7065| 0.6288|
-| 2022   | 0.6222   | 0.6878| 0.6041|
-| 2023   | 0.6494   | 0.7106| 0.6349|
-
----
-
-## Future Directions
-- Explore additional ensemble techniques beyond soft voting.
-- Implement neural network-based models for player-level prediction.
-- Integrate real-time data updates for in-season predictions.
-
----
-
-## File Outputs
-- `team_stats.csv`: Processed game-level data.
-- `prob_df`: Probabilities for each prediction.
-- `acc_df`: Accuracy metrics for each season.
 
