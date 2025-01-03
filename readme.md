@@ -160,124 +160,162 @@ def backtest(data, predictors, model, start=3, step=1):
         predictions, predictions_prob = get_predictions(model, test[predictors])
 ```
 
+#### **6. Neural Network Implementation**
+This section adds a neural network to predict NBA game outcomes using TensorFlow/Keras. The model was trained on preprocessed NBA data, and its performance was evaluated using metrics like accuracy, F1 score, and ROC AUC.
 
-### 5. Visualization and Evaluation
+**Model Architecture**:
+- **Input**: Flattened feature set from preprocessed data.
+- **Hidden Layers**: 
+  - Layer 1: 512 neurons, `ReLU6` activation, dropout 20%.
+  - Layer 2: 256 neurons, `ReLU6` activation, dropout 20%.
+  - Layer 3: 128 neurons, `ReLU6` activation.
+- **Output Layer**: Softmax activation for categorical classification (home team win or loss).
 
-#### **Calibration Curve**
-Plots predicted probabilities against actual probabilities to evaluate model calibration.
+**Key Steps**:
+1. Normalize the input data.
+2. Train-test split (80/20).
+3. Compile the model with a small learning rate (`0.00001`) to improve stability.
+4. Save the best weights during training using the `ModelCheckpoint` callback.
+5. Monitor validation loss for early stopping.
 
-#### **ROC Curve**
-Displays the tradeoff between true positive rate (TPR) and false positive rate (FPR).
+**Key Outputs**:
+- `Home_Prob`: Predicted probability of a home team win.
+- `Target`: Actual game outcome (0 = away team win, 1 = home team win).
+- Metrics: Accuracy, F1 score, ROC AUC.
 
-#### **Confusion Matrix**
-Visualizes classification performance by showing true positives, false positives, true negatives, and false negatives.
-
-#### Examples:
+**Code Snippet**:
 ```python
-plot_calibration(prob_df)
-plot_roc_curve(prob_df)
-plot_confusion_matrix(test, predictions)
+    # Model architecture
+    model = Sequential([
+        Flatten(input_shape=(x_train.shape[1],)),
+        Dense(512, activation=tf.nn.relu6),
+        Dropout(0.2),
+        Dense(256, activation=tf.nn.relu6),
+        Dropout(0.2),
+        Dense(128, activation=tf.nn.relu6),
+        Dense(2, activation=tf.nn.softmax)
+    ])
 ```
 
----
-
-### 6. Performance Metrics
-- **Accuracy**
-- **F1 Score**
-- **AUC (Area Under Curve)**
-
-#### Original Features
-##### Performance Metrics:
-
-- Higher accuracy (0.639) and AUC (0.619) suggest better ranking and classification ability when using original features.
-- The slightly lower F1 score (0.707) compared to PCA features indicates that the original features might struggle slightly more with balanced predictions in scenarios where false positives and false negatives carry significant weight.
-Calibration:
-
-- The calibration curve is smoother and closely aligned with the diagonal, indicating that predicted probabilities closely match actual probabilities.
-
-- This reflects the model's reliability when using the full feature set, potentially due to a richer representation of underlying relationships.
-
-##### Calibration Curve
-<img src="images/Original_Calibration_Curve.png" alt="Calibration Curve" width="700">
-
-
-#### PCA-Reduced Features
-##### Performance Metrics:
-
-- Accuracy (0.619): A slight decrease compared to the original features, likely because PCA removes some variance associated with predictive but less dominant features.
-- F1 Score (0.715): The increase suggests better handling of balanced prediction tasks, such as when classes are imbalanced or costs of misclassification differ.
-- AUC (0.584): A decrease indicates reduced ability to rank predictions by confidence, possibly due to the dimensionality reduction discarding some subtle but predictive relationships.
-Calibration:
-
-While slightly noisier, the curve still aligns reasonably well with the diagonal, indicating that PCA retains enough variance to make meaningful probabilistic predictions.
-However, the noisiness could reflect information loss or weaker correlations between reduced features and the target variable.
-
-##### Calibration Curve
-
-
-<img src="images/PCA_Calabration_Curve.png" alt="Calibration Curve" width="700">
-
-
-
-## Observations:
-
-Calibration Curves:
-
-The PCA features show a slightly noisier calibration but still align reasonably well with the diagonal.
-This suggests the model generalizes decently, even after dimensionality reduction.
-Metrics Context:
-
-AUC being low (0.584) suggests weaker ranking ability, but the F1 score is strong, meaning PCA features might work better for balanced prediction tasks rather than nuanced ranking.
+Here’s an updated and consistent format for **Section 5: Visualization and Evaluation** and **Section 6: Performance Metrics** with a unified analysis and formatting.
 
 ---
 
-Here’s the updated documentation with additional steps detailing your future plans to use a neural network and explore other feature selection techniques like Sequential Feature Selection (SFS):
+### **5. Visualization and Evaluation**
+
+#### **Calibration Curve**
+The calibration curve evaluates the alignment between predicted probabilities and actual outcomes. A well-calibrated model's curve will align closely with the diagonal, indicating that predicted probabilities accurately reflect true probabilities.
+
+**Code Snippet**:
+```python
+plot_calibration(results_df)
+```
+
+**Observation**:
+- The **original features** produce a smoother calibration curve, aligning well with the diagonal, indicating strong reliability in predicted probabilities.
+- The **PCA-reduced features** yield a noisier curve, likely due to information loss during dimensionality reduction, but still provide reasonable alignment.
+- The **neural network** demonstrates improved calibration over the PCA features, reflecting better probability predictions.
+
+**Calibration Curve Visualizations**:
+1. **Original Features**:
+
+   <img src="images/Original_Calibration_Curve.png" alt="Original Calibration Curve" width="700">
+
+2. **PCA-Reduced Features**:
+
+   <img src="images/PCA_Calabration_Curve.png" alt="PCA Calibration Curve" width="700">
+
+3. **NN Model Original Features**
+
+   <img src="images/NN_Calibration.png" alt="PCA Calibration Curve" width="700">
+
+
 
 ---
 
-## NBA Data Analysis Documentation
+#### **ROC Curve**
+The ROC (Receiver Operating Characteristic) curve shows the tradeoff between the true positive rate (TPR) and false positive rate (FPR) across various classification thresholds. The AUC (Area Under Curve) quantifies the model's ability to rank predictions correctly.
 
-### 7. Future Steps
+**Code Snippet**:
+```python
+plot_roc_curve(results_df)
+```
 
-#### **1. Using a Neural Network for Prediction**
-To further improve predictive performance, especially in capturing complex nonlinear relationships, I plan to implement a neural network model.
+**Observation**:
+- The **original features** achieve a higher AUC (0.619), indicating better ranking ability.
+- The **PCA-reduced features** show a reduced AUC (0.584), highlighting the tradeoff for dimensionality reduction.
+- The **neural network** achieves the highest AUC (0.7055), showcasing its ability to model complex relationships and rank predictions effectively.
 
-- **Architecture**:
-  - Input layer: Features from PCA or other feature selection techniques.
-  - Hidden layers: Use 2–3 dense layers with ReLU activation to capture nonlinearities.
-  - Output layer: Single neuron with sigmoid activation for binary classification (Home Team Win or Loss).
-
-- **Steps**:
-  1. Use TensorFlow/Keras or PyTorch for implementation.
-  2. Experiment with different optimizers (e.g., Adam) and learning rates.
-  3. Perform hyperparameter tuning for:
-     - Number of hidden layers and neurons.
-     - Batch size and learning rate.
-     - Dropout rates to prevent overfitting.
-  4. Use cross-validation for robust evaluation.
-
-- **Expected Benefits**:
-  - Improved ability to capture complex feature interactions.
-  - Better calibration of predicted probabilities through techniques like temperature scaling.
-
-- **Code Snippet**:
-  ```python
-  from tensorflow.keras.models import Sequential
-  from tensorflow.keras.layers import Dense, Dropout
-
-  def build_neural_network(input_dim):
-      model = Sequential([
-          Dense(128, activation='relu', input_dim=input_dim),
-          Dropout(0.3),
-          Dense(64, activation='relu'),
-          Dropout(0.3),
-          Dense(1, activation='sigmoid')
-      ])
-      model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-      return model
-  ```
+**ROC Curve Visualization**:
+<img src="images/ROC_Curve_NN.png" alt="ROC Curve Neural Network" width="700">
 
 ---
+
+### **6. Performance Metrics**
+
+This section summarizes the evaluation metrics for models trained using the original features, PCA-reduced features, and the neural network. Metrics include accuracy, F1 score, and ROC AUC.
+
+#### **Original Features**
+- **Accuracy**: 0.639
+- **F1 Score**: 0.707
+- **AUC**: 0.619
+- **Analysis**:
+  - The model performs well on ranking tasks (AUC) and achieves balanced predictions (F1 score).
+  - The calibration curve is smooth and closely aligned with the diagonal, indicating reliable probability predictions.
+
+---
+
+#### **PCA-Reduced Features**
+- **Accuracy**: 0.619
+- **F1 Score**: 0.715
+- **AUC**: 0.584
+- **Analysis**:
+  - Dimensionality reduction slightly reduces accuracy and AUC due to potential loss of predictive variance.
+  - The improved F1 score suggests better performance on balanced predictions, especially for imbalanced scenarios.
+
+---
+
+#### **Neural Network**
+- **Accuracy**: 0.6599
+- **F1 Score**: 0.7174
+- **AUC**: 0.7055
+- **Analysis**:
+  - The neural network outperforms both the original and PCA-reduced feature models in terms of AUC, demonstrating its superior ability to rank predictions.
+  - A higher F1 score reflects its strength in handling imbalanced data while achieving balanced predictions.
+  - The training and validation losses stabilize due to early stopping, indicating effective regularization and prevention of overfitting.
+
+**Neural Network Progression**:
+
+   <img src="images/NN_Progress.png" alt="Loss Progression Neural Network" width="700">
+
+---
+
+### **Summary of Results**
+| Model                | Accuracy | F1 Score | AUC    | Calibration | Notes                                      |
+|----------------------|----------|----------|--------|-------------|--------------------------------------------|
+| Original Features    | 0.639    | 0.707    | 0.619  | Smooth      | Reliable ranking and probability prediction|
+| PCA-Reduced Features | 0.619    | 0.715    | 0.584  | Noisier     | Improved F1 but reduced ranking ability    |
+| Neural Network       | 0.6599   | 0.7174   | 0.7055 | Improved    | Best overall performance, especially in ranking|
+
+---
+
+### Next Steps:
+1. **Neural Network Optimization**:
+   - Experiment with different architectures, such as deeper layers or residual connections.
+   - Use hyperparameter tuning to optimize learning rate, batch size, and dropout rates.
+
+2. **Feature Selection**:
+   - Explore advanced techniques such as sequential feature selection (SFS) to identify key predictors and improve model interpretability.
+
+3. **Cross-Validation**:
+   - Validate all models across multiple folds to ensure robust generalization.
+
+4. **Combine Models**:
+   - Integrate the neural network with traditional ensemble methods like voting classifiers or stacking to further enhance performance.
+
+This updated documentation provides a structured comparison of all models with consistent analysis and formatting. Let me know if you need further updates or refinements!
+
+### **Future Work**
 
 #### **2. Exploring Sequential Feature Selection (SFS)**
 To identify the most informative features, I will experiment with **Sequential Feature Selection** (SFS). This technique adds or removes features iteratively to optimize model performance.
