@@ -239,23 +239,11 @@ plot_calibration(results_df)
 
 
 
----
-
-#### **ROC Curve**
-The ROC (Receiver Operating Characteristic) curve shows the tradeoff between the true positive rate (TPR) and false positive rate (FPR) across various classification thresholds. The AUC (Area Under Curve) quantifies the model's ability to rank predictions correctly.
-
-**Code Snippet**:
-```python
-plot_roc_curve(results_df)
-```
-
-**Observation**:
+**ROC Observation**:
 - The **original features** achieve a higher AUC (0.619), indicating better ranking ability.
 - The **PCA-reduced features** show a reduced AUC (0.584), highlighting the tradeoff for dimensionality reduction.
 - The **neural network** achieves the highest AUC (0.7055), showcasing its ability to model complex relationships and rank predictions effectively.
 
-**ROC Curve Visualization**:
-<img src="images/ROC_Curve_NN.png" alt="ROC Curve Neural Network" width="700">
 
 ---
 
