@@ -3,9 +3,7 @@
 ## Overview
 This project involves building predictive models and performing exploratory data analysis (EDA) on NBA data to evaluate team and player performance. The workflow integrates machine learning techniques, statistical modeling, and feature engineering, with a focus on Elo ratings, mutual information, and PCA for feature selection.
 
-## **Overview**
 
-The pipeline achieves the following:
 
 1. **Cross-validation with PCA**: Applies dimensionality reduction using PCA to retain 95% of variance and evaluates a Random Forest classifier.
 2. **Elo Rating Calculation**: Tracks team strength over time using a custom Elo system without data leakage.
