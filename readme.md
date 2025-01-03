@@ -196,9 +196,6 @@ This section adds a neural network to predict NBA game outcomes using TensorFlow
         Dense(2, activation=tf.nn.softmax)
     ])
 ```
-
-Here’s an updated and consistent format for **Section 5: Visualization and Evaluation** and **Section 6: Performance Metrics** with a unified analysis and formatting.
-
 ---
 
 ### **5. Visualization and Evaluation**
