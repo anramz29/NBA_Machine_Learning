@@ -233,4 +233,83 @@ AUC being low (0.584) suggests weaker ranking ability, but the F1 score is stron
 
 ---
 
+Here’s the updated documentation with additional steps detailing your future plans to use a neural network and explore other feature selection techniques like Sequential Feature Selection (SFS):
+
+---
+
+## NBA Data Analysis Documentation
+
+### 7. Future Steps
+
+#### **1. Using a Neural Network for Prediction**
+To further improve predictive performance, especially in capturing complex nonlinear relationships, I plan to implement a neural network model.
+
+- **Architecture**:
+  - Input layer: Features from PCA or other feature selection techniques.
+  - Hidden layers: Use 2–3 dense layers with ReLU activation to capture nonlinearities.
+  - Output layer: Single neuron with sigmoid activation for binary classification (Home Team Win or Loss).
+
+- **Steps**:
+  1. Use TensorFlow/Keras or PyTorch for implementation.
+  2. Experiment with different optimizers (e.g., Adam) and learning rates.
+  3. Perform hyperparameter tuning for:
+     - Number of hidden layers and neurons.
+     - Batch size and learning rate.
+     - Dropout rates to prevent overfitting.
+  4. Use cross-validation for robust evaluation.
+
+- **Expected Benefits**:
+  - Improved ability to capture complex feature interactions.
+  - Better calibration of predicted probabilities through techniques like temperature scaling.
+
+- **Code Snippet**:
+  ```python
+  from tensorflow.keras.models import Sequential
+  from tensorflow.keras.layers import Dense, Dropout
+
+  def build_neural_network(input_dim):
+      model = Sequential([
+          Dense(128, activation='relu', input_dim=input_dim),
+          Dropout(0.3),
+          Dense(64, activation='relu'),
+          Dropout(0.3),
+          Dense(1, activation='sigmoid')
+      ])
+      model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+      return model
+  ```
+
+---
+
+#### **2. Exploring Sequential Feature Selection (SFS)**
+To identify the most informative features, I will experiment with **Sequential Feature Selection** (SFS). This technique adds or removes features iteratively to optimize model performance.
+
+- **Steps**:
+  1. Use scikit-learn's `SequentialFeatureSelector` with models like Logistic Regression or Random Forest as the estimator.
+  2. Perform both **forward selection** (starting with an empty set of features) and **backward elimination** (starting with all features).
+  3. Compare the selected features with those identified by PCA and mutual information.
+
+- **Metrics for Evaluation**:
+  - Accuracy, F1 Score, and AUC for the selected feature subset.
+  - Computational efficiency compared to PCA.
+
+- **Code Snippet**:
+  ```python
+  from sklearn.feature_selection import SequentialFeatureSelector
+  from sklearn.ensemble import RandomForestClassifier
+
+  def perform_sfs(X, y):
+      clf = RandomForestClassifier(n_estimators=100, random_state=42)
+      sfs = SequentialFeatureSelector(clf, n_features_to_select=10, direction='forward', cv=5)
+      sfs.fit(X, y)
+      selected_features = sfs.get_support(indices=True)
+      return selected_features
+  ```
+
+- **Expected Benefits**:
+  - Identifies specific features that contribute most to predictive performance.
+  - Can complement PCA by selecting interpretable features in the original feature space.
+
+---
+
 
